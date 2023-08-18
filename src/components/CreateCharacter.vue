@@ -1,53 +1,48 @@
 <template>
   <t-navbar :fixed="true" class="navbar" left-arrow @left-click="handleClick">
     <template #left>
-      <span class="custom-title">创建角色</span>
+      <span class="custom-title">绘本创作</span>
     </template>
   </t-navbar>
-  <div class="create-character">
-    <div id="tip" @click="changeCharacter">
-      <div class="character-container">
-        <t-image
-            class="character-image"
-            :src="character.image"
-            fit="cover"
-            shape="round"
-        >
-        </t-image>
-        <TInput
-          v-model="character.description"
-          placeholder="我是谁？"
-          type="textarea"
-          :rows="3"
-        />
-        <TButton
-            class="randomize-button"
-            theme="primary"
-            variant="outline"
-            size="large"
-            @click="randomizeCharacter"
-            :icon="randomIcon"
-        >
-            <img :src="randomIcon" alt="random-icon" width="24px" height="24px" /> 随机生成
-        </TButton>
-
-        <div class="change-count">剩余更换次数: {{ remainingChanges }}</div>
-      </div>
-      <TButton class="create-button" type="primary" size="large" block @click="createCharacter">创建角色</TButton>
+  <div class="character-creation" @click="changeCharacter">
+    <div class="character-title">
+      <div class="main-title">创建角色</div>
+      <img class="separator" :src="separatorImage" alt="分隔线" />
+      <div class="subtitle">选择一个喜欢的角色</div>
     </div>
+    <div class="character-container">
+      <t-image
+          class="character-image"
+          :src="character.image"
+          fit="cover"
+          shape="round"
+      >
+      </t-image>
+      <TInput
+        v-model="character.description"
+        placeholder="我是谁？"
+        type="textarea"
+        :rows="3"
+      />
+    </div>
+  </div>
+  <div class="button-container">
+    <RandomButton class="randomize-button" @click="randomizeCharacter" />
+    <TButton class="create-button" theme="primary" variant="outline" type="submit" size="large" block @click="createCharacter">创建角色</TButton>
   </div>
 </template>
 
 
+
 <script>
 import { Button as TButton, Navbar as TNavbar, Input as TInput, Image as TImage } from 'tdesign-mobile-vue';
-import randomIcon from '@/assets/icon-random.svg';
+import RandomButton from '@/components/RandomButton.vue'; // 导入RandomButton组件
 
 export default {
-  components: { TButton, TNavbar, TInput, TImage },
+  components: { TButton, TNavbar, TInput, TImage, RandomButton }, // 注册RandomButton组件
   data() {
     return {
-      randomIcon, // 将图标路径添加到组件的数据中
+      
       character: {
         image: '', // 将在 created 钩子中设置
         description: '' // 将在 created 钩子中设置
@@ -57,7 +52,7 @@ export default {
         { image: require('@/assets/character2.png'), description: '角色2的描述...' },
         // 更多角色...
       ],
-      remainingChanges: 5 // 剩余更换次数
+      separatorImage: require('@/assets/separator.png'), // 分隔线图片
     };
   },
   created() {
@@ -81,8 +76,7 @@ export default {
     },
     changeCharacter() {
       // 在这里处理更换角色的逻辑
-      // 可以减少剩余更换次数
-      this.remainingChanges -= 1;
+
     }
   }
 };
@@ -91,52 +85,77 @@ export default {
 
 <style scoped>
 .navbar {
-  z-index: 1000; /* 确保导航条在最上层 */
+  z-index: 1000;
 }
 
 .custom-title {
-  margin-left: 8px;
+  margin-left: 20px;
   font-size: 18px;
   font-weight: 600;
 }
 
-.create-character {
-  padding: 16px; /* 外层页面左右边距 */
-}
-
-#tip {
+.character-creation {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   position: relative;
   cursor: pointer;
   border-radius: 8px;
-  box-shadow: 0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 4px 10px  rgba(0, 0, 0, 0.1);
+  box-shadow: 0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.character-title {
+  text-align: center;
+  padding: 16px;
+}
+
+.main-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+}
+
+.separator {
+  margin: 8px;
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #666;
 }
 
 .character-container {
-  padding-bottom: 20px; /* 只保留下方的padding */
-  text-align: center;
+  padding-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .character-image {
-  width: 100%; /* 图片横向填满角色面板 */
+  width: 100%;
   position: relative;
   display: block;
   margin: 0 auto;
 }
 
+.button-container {
+  padding: 16px;
+  display: flex;
+  margin-top: 34px;
+  justify-content: space-between;
+}
+
 .create-button {
-  margin-top: 20px;
+  flex: 1;
+  --td-button-font-weight: normal;
 }
 
 .randomize-button {
-    margin-top: 10px;
-    float: right; /* 使按钮右对齐 */    
+  flex: 1.5;
+  margin-Right: 12px;
 }
-
-.change-count {
-  font-size: 14px;
-  color: rgba(0, 0, 0, 0.6);
-  text-align: center;
-  margin-top: 10px;
-}
-
 </style>
