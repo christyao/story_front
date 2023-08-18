@@ -1,5 +1,5 @@
 <template>
-  <t-button class="randomize-button" theme="primary" size="large"  shape="block" :icon="randomIconSlot" @click="clickHandler">
+  <t-button class="randomize-button" theme="primary" size="medium"  shape="round" :icon="randomIconSlot" @click="clickHandler">
     <span class="change-text">换一换</span>
     <span class="remaining-text">(剩余：{{ remainingChanges }})</span>
   </t-button>
