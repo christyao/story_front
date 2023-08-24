@@ -1,9 +1,12 @@
 <template>
+  <!-- 标题栏 -->
   <t-navbar :fixed="true" class="navbar" left-arrow @left-click="handleClick">
     <template #left>
       <span class="custom-title">绘本创作</span>
     </template>
   </t-navbar>
+
+  <!-- 角色版块 -->
   <div class="character-creation" @click="changeCharacter">
     <div class="character-title">
       <div class="main-title">创建角色</div>
@@ -26,9 +29,11 @@
       />
     </div>
   </div>
+
+  <!-- 操作区 -->
   <div class="button-container">
     <RandomButton class="randomize-button" @click="randomizeCharacter" />
-    <TButton class="create-button" theme="primary" variant="outline" type="submit" size="large" block @click="createCharacter">创建角色</TButton>
+    <TButton class="create-button" theme="primary" variant="outline" type="submit" size="medium" shape="round" @click="createCharacter">创建角色</TButton>
   </div>
 </template>
 
@@ -37,6 +42,7 @@
 <script>
 import { Button as TButton, Navbar as TNavbar, Input as TInput, Image as TImage } from 'tdesign-mobile-vue';
 import RandomButton from '@/components/RandomButton.vue'; // 导入RandomButton组件
+import axios from 'axios';
 
 export default {
   components: { TButton, TNavbar, TInput, TImage, RandomButton }, // 注册RandomButton组件
@@ -61,11 +67,31 @@ export default {
   },
   methods: { // 这里添加了 methods 对象
     randomizeCharacter() {
-      // 随机选择角色
-      const selectedCharacter = this.fakeCharacters[
-        Math.floor(Math.random() * this.fakeCharacters.length)
-      ];
-      this.character = selectedCharacter;
+      // 定义请求参数
+      const requestParams = {
+        preset: false // 您可以根据需要更改此值
+      };
+
+      // 打印请求参数到控制台
+      console.log('Request parameters:', requestParams);
+
+      // 使用Axios发送GET请求
+      axios.get('/api/roles/preset/random', { params: requestParams })
+        .then(response => {
+          // 从响应中提取相关字段
+          const data = response.data;
+          console.log(data);
+          // 重新组装为character对象所需的格式
+          this.character = {
+            description: data.description,
+            image: data.image, // 假设image字段包含图片URL
+            // 您还可以根据需要添加其他字段
+          };
+        })
+        .catch(error => {
+          // 处理错误
+          console.error(error);
+        });
     },
     createCharacter() {
       // 转到下一个页面

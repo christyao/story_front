@@ -3,6 +3,7 @@ import TDesign from 'tdesign-mobile-vue';
 import App from './App.vue';
 import router from './router';
 import './main.css';
+import axios from 'axios';
 
 
 // 引入组件库的少量全局样式变量
@@ -19,3 +20,5 @@ app.use(router);
 // 挂载应用程序
 app.mount('#app');
 
+// 配置Axios的基础URL
+axios.defaults.baseURL = 'http://127.0.0.1:5000';
