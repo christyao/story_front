@@ -1,7 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import CharacterDetails from '../components/CharacterDetails.vue'; // 假设组件路径
 import CreateCharacter from '../components/CreateCharacter.vue'; // 导入创建角色组件
-import StoryDetails from '../components/StoryDetails.vue'; // 导入创建角色组件
+import StoryDetails from '../components/StoryDetails.vue'; // 绘本编辑组件
+import FinishStory from '../components/FinishStory.vue'; // 生成绘本组件
+
 
 
 const routes = [
@@ -19,7 +21,12 @@ const routes = [
   {
     path: '/', // 根路径
     name: 'StoryDetails',
-    component: StoryDetails // 绘本
+    component: StoryDetails // 绘本编辑
+  },
+    {
+    path: '/FinishStory', // 根路径
+    name: 'FinishStory',
+    component: FinishStory // 绘本生成
   },
 ];
 

@@ -6,7 +6,7 @@
       <span class="custom-title">绘本创作</span>
     </template>
     <template #right>
-      <t-button size="extra-small" theme="danger" variant="outline" shape="round" style="margin-right: 10px;">生成绘本</t-button>
+      <t-button size="extra-small" theme="danger" variant="outline" shape="round" style="margin-right: 10px;" @click="navigateToFinishStory()">生成绘本</t-button>
       <t-icon name="ellipsis" size="24px" />
     </template>
   </t-navbar>
@@ -44,21 +44,21 @@
 
 
   <!-- 故事线选择 -->
-  <div class="story-title-block">
+  <div class="story-title-block" v-show="chapter_length < 10">
     <div class="story-title">第{{album_plot.length + 1}}话</div>
     <div class="story-hint">（选择故事线）</div>
     <img src="@/assets/mask-group.png" class="story-title-img">
   </div>
   
   <!-- 图片组 -->
-  <div class="plot" v-show="!upscaleVisible">
+  <div class="plot" v-show="!upscaleVisible && !refresh_loading && chapter_length < 10">
     <div 
       v-for="plot in plots"
       :key="plot.id"
       class="plot-image" 
       @click="selectImage(plot.id)">
       <img 
-        :class="['story-image' , { 'image-selected': selectedImage === plot.id }]" 
+        :class="['story-image' , { 'image-selected': selectPlotId === plot.id }]" 
         :src="plot.image_url">
       <div class="image-text">{{plot.plot}}</div>
     </div>
@@ -66,16 +66,19 @@
 
   <!-- 放大图片 -->
   <transition name="fade">
-      <div class="upscale-block" v-show="upscaleVisible">
+    <div v-if="isButtonDisabled || upscaleVisible" class="transition-container">
+      <div class="upscale-block" v-if="upscaleVisible">
           <img :src="upscale_image" class="upscale-image">
       </div>
+      <div class="upscale-block" v-else><div class="upscale-loading">剧情正在刷新中...</div></div>
+    </div>
   </transition>
 
   <!-- 桥段显示 -->
-  <div class="plot-block"><div class="plot-text">{{plotText}}</div></div>
+  <div class="plot-block"><div class="plot-text">{{ chapter_length<10 ? plotText:'故事已完毕' }}</div></div>
 
   <!-- 提交按钮 -->
-  <div class="submit-block">
+  <div class="submit-block" v-if="chapter_length < 10">
       <t-button 
         class="randomize-button" 
         theme="primary" 
@@ -85,15 +88,15 @@
         @click="randomizePlot"
         :disabled="isButtonDisabled">
         <span class="change-text">{{ buttonText }}</span>
-        <span class="remaining-text">(剩余：{{ remainingChanges }})</span>
+        <span class="remaining-text">(剩余：{{ upscaleVisible ? change_image_numbers:change_plot_numbers  }})</span>
       </t-button>
     <t-button class="next-button" size="medium" theme="danger" block variant="outline" shape="round" @click="nextStep">
-    {{change_btn ? '保存并下一步':'优化图片' }}</t-button>
+    {{upscaleVisible ? '保存并下一步':'优化图片' }}</t-button>
   </div>
 
 </template>
 <script>
-  // import RandomButton from '@/components/RandomButton.vue'; // 导入RandomButton组件
+  import { Toast } from 'tdesign-mobile-vue';
   import { h } from 'vue';
   import randomIcon from '@/assets/icon-random.svg';
   import axios from 'axios';
@@ -109,31 +112,36 @@
           description:'可爱活泼',
           age:'5',
         },
-        plots: [],
-        plotText: "",
-        selectedImage:null,
-        theme_id:1,
-        album_id:1,
-        user_id:1,
-        album:{},
-        album_plot:[],
-        chapter_next:0,
-        remainingChanges:6, // 初始剩余更换次数
-        upscale_image:'',
-        change_btn:false,
-        change_description:'',
-        upscaleVisible: false,
-        isButtonDisabled: false,
-        buttonText: '',
-        image_detail:'',
-        selectedImageId:null,
+        plots: [], // 记录随机生成剧情
+        plotText: "", // 记录动态选择时的剧情
+        selectPlotId:null, // 记录随机剧情中，被选择剧情的id
+        theme_id:1, // 绘本主题，由上一页传入
+        album_id:1, // 绘本id，由上一页传入
+        user_id:1, // 用户id，由上一页传入
+        album:{}, // 记录绘本对象
+        album_plot:[], // 记录绘本已有剧情
+        chapter_next:0, // 记录绘本编辑到哪个章节
+        // 统计随机次数，上限5次，页面加载时默认随机一次
+        change_image_numbers:3, // 初始剩余换图次数
+        change_plot_numbers:3, // 初始剩余换剧情次数
+        upscale_image:'', // 记录放大显示图片的地址
+        image_description:'', // 记录随机生成图片已选择部分的生图描述
+        upscaleVisible: false, // 判断放大图片模块是否显示
+        isButtonDisabled: false, // 判断按钮点击后是否需要禁用
+        buttonText: '', // 提交按钮文案
+        image_detail:'', // 记录换图片后的图片对象
+        selectedImageId:null, // 记录已选择图片的id
+        refresh_loading:true, // 记录是否正在刷新中的状态
+        chapter_length:0, // 限制绘本长度
       };
     },
     created(){
       // 
     },
     mounted(){
+      // 初始化数据
       this.getAlbum();
+      this.smoothScrollToBottom(); // 添加此行来滚动到底部
     },
     computed: {
       computedPlotText() {
@@ -141,6 +149,25 @@
       },
     },
     methods: {
+      smoothScrollToBottom(duration = 600) {
+        const start = window.scrollY || window.pageYOffset;
+        let startTime = null;
+
+        const animation = currentTime => {
+          const documentHeight = document.body.scrollHeight;
+          const windowHeight = window.innerHeight;
+          const distance = documentHeight - windowHeight - start;
+
+          if (!startTime) startTime = currentTime;
+          const progress = Math.min((currentTime - startTime) / duration, 1);
+          window.scrollTo(0, start + distance * progress + 80);
+          if (progress < 1) {
+            window.requestAnimationFrame(animation);
+          }
+        };
+
+        window.requestAnimationFrame(animation);
+      },
       randomIconSlot() {
         return h('img', {
           src: randomIcon,
@@ -150,54 +177,71 @@
       },
       selectImage(imageNumber) {
         let plot = this.plots.find(p => p.id === imageNumber);
-        this.selectedImage = imageNumber;
         if (plot) {
+          this.selectPlotId = imageNumber;
           this.plotText = plot.plot;
           this.selectedImageId = plot.description.image_id
-        } else {
-          console.error(`Plot with ID ${imageNumber} not found!`);
         }
       },
       randomizePlot(){
-        this.isButtonDisabled = true; // 禁用按钮
-        this.buttonText = "随机中..."; // 设置按钮文本为 "加载中..."
-        if (this.change_btn)
+        if(this.chapter_length > 9)
         {
-          axios.get('http://127.0.0.1:5000/changeImage', {
-            params: {
-              description: this.change_description,
-              album_id: this.album_id,
-              user_id: this.user_id
-            }
-          }).then(response => {
-                console.log(response.data);
-                for (var i = this.plots.length - 1; i >= 0; i--) {
-                  if (this.plots[i].id == this.selectedImage)
-                  {
-                    console.log(this.album_plot);
-                    this.upscale_image = response.data.generated_image_url;
-                    this.image_detail = response.data.image_details;
-                  }
+          this.showWarning('已超过剧情长度，请生成绘本完成');
+        }else{
+          this.refresh_loading = true; // 隐藏剧情部分
+          this.isButtonDisabled = true; // 禁用按钮
+          this.buttonText = "随机中..."; // 设置按钮文本为 "随机中..."
+          if (this.upscaleVisible) // 换图片请求
+          {
+            if (this.change_image_numbers > 0) {
+              axios.get('http://127.0.0.1:5000/changeImage', {
+                params: {
+                  description: this.image_description,
+                  album_id: this.album_id,
+                  user_id: this.user_id
                 }
-                this.isButtonDisabled = false; // 启用按钮
-                this.buttonText = '换图片'; 
-          });
-        }else
-        {
-          if (this.remainingChanges > 0) {
-            this.remainingChanges -= 1;
-          }
-          axios.get('http://127.0.0.1:5000/getPlot', {
-            params: {
-              chapter_next: this.album_plot.length + 1,
-              theme_id: this.theme_id,
+              }).then(response => {
+                  // console.log(response.data);
+                  this.upscale_image = response.data.generated_image_url;
+                  this.image_detail = response.data.image_details;
+                  this.isButtonDisabled = false; // 启用按钮
+                  this.refresh_loading = false; // 显示剧情部分
+                  this.change_image_numbers --; // 扣除随机图片次数
+              });
+            }else{
+              this.showWarning('随机次数不足，请充值...');
+              this.refresh_loading = false; // 显示剧情部分
+              this.isButtonDisabled = false; // 启用按钮
             }
-          }).then(response => {
-                this.plots = response.data;
-                console.log(this.plots);
-                this.isButtonDisabled = false; // 启用按钮
-                this.buttonText = '换剧情'; 
-          });
+          }else // 换剧情请求
+          {
+            if (this.change_plot_numbers > 0) {
+              axios.get('http://127.0.0.1:5000/getPlot', {
+              params: {
+                  chapter_next: this.album_plot.length + 1,
+                  theme_id: this.theme_id,
+                }
+              }).then(response => {
+                    this.plots = response.data;
+                    this.isButtonDisabled = false; // 启用按钮
+                    this.initDefaultSelect(); // 默认选中随机选项第一个
+                    this.refresh_loading = false; // 显示剧情部分
+                    this.change_plot_numbers --; // 扣除随机剧情次数
+              });
+            }else{
+              this.showWarning('随机次数不足，请充值...');
+              this.refresh_loading = false; // 显示剧情部分
+              this.isButtonDisabled = false; // 启用按钮
+            }  
+          }
+        }
+      },
+      initDefaultSelect()
+      {
+        if (this.plots.length > 0) {
+          this.selectPlotId = this.plots[0].id;
+          this.plotText = this.plots[0].plot;
+          this.selectedImageId = this.plots[0].description.image_id;
         }
       },
       getAlbum()
@@ -208,43 +252,29 @@
             album_id: album_id
           }
         }).then(response => {
-              this.album = response.data;
-              this.album_plot = JSON.parse(this.album.content);
-              this.chapter_next = this.album_plot.length + 1;
-              console.log(this.album_plot);
-              this.randomizePlot();
+            this.album = response.data;
+            this.album_plot = JSON.parse(this.album.content);
+            this.chapter_next = this.album_plot.length + 1;
+            // 初始化时进行一次随机
+            this.randomizePlot();
+            // 记录绘本长度
+            this.chapter_length = this.album_plot.length;
         });
       },
       nextStep()
       {
-        if(this.upscaleVisible)
+        if(this.upscaleVisible) // 保存绘本
         {
           this.saveAlbum();
-        }else
+        }else // 放大图片
         {
-          if (this.selectedImage) {
-            for (var i = this.plots.length - 1; i >= 0; i--) {
-              if (this.plots[i].id == this.selectedImage)
-              {
-                this.upscale_image = this.plots[i].image_url;
-                this.change_description = this.plots[i].description.content;
-                this.showUpscaleImage();
-                this.buttonText = '换图片';
-                if(this.upscaleVisible)
-                {
-                  this.change_btn = true;
-                }else
-                {
-                  this.change_btn = false;
-                } 
-              }
-            }
-          }else
-          {
-            // 
-          }
+          let plot = this.plots.find(p => p.id === this.selectPlotId);
+          // console.log(plot);
+          this.upscale_image = plot.image_url;
+          this.iamge_description = plot.description.content;
+          this.showUpscaleImage();
+          this.buttonText = '换图片';
         }
-        
       },
       showUpscaleImage() {
         this.upscaleVisible = true;
@@ -259,18 +289,17 @@
           image: this.upscale_image,
           image_id: this.image_detail.id ? this.image_detail.id : this.selectedImageId,
           plot_description: this.plotText,
-          plot_id: this.selectedImage,
+          plot_id: this.selectPlotId,
         };
-        console.log(formData);
         axios.get('http://127.0.0.1:5000/saveAlbum', {
           params: {
             album_id: this.album_id,
             formData: formData,
           }
         }).then(response => {
-          console.log(response.data);
           this.refreshStory(response.data);
           this.upscaleVisible = false;
+          this.smoothScrollToBottom(); // 添加此行来滚动到底部
         });
       },
       refreshStory(data)
@@ -278,9 +307,34 @@
         this.album = data;
         this.album_plot = JSON.parse(this.album.content);
         this.chapter_next = this.album_plot.length + 1;
-        console.log(this.album_plot);
+        this.chapter_length = this.album_plot.length;
         this.randomizePlot();
-      }
+      },
+      navigateToFinishStory() {
+        if(this.chapter_length > 0)
+        {
+          this.$router.push({
+            name: 'FinishStory',
+            query: {
+              theme_id:this.theme_id,
+              album_id:this.album_id,
+              user_id:this.user_id,
+              album:this.album,
+              album_plot:this.album_plot,
+            }
+          });
+        }else{
+          this.showWarning('请先完成剧情创建');
+        }
+      },
+      showWarning(content){
+        let text = content;
+        Toast({
+          direction: 'column',
+          theme: 'success',
+          message: text,
+        });
+      },
     }
   }
 
@@ -471,11 +525,17 @@
     width: 100%;
     z-index: 10;
   }
-  .upscale-image
+  .upscale-image, .upscale-loading
   { 
     border-radius: 10px;
     width: 100%;
     height: 390px;
+  }
+  .upscale-loading
+  {
+    display: flex;
+    align-items: center;    /* 垂直居中 */
+    justify-content: center; /* 水平居中 */
   }
   .fade-enter-active, .fade-leave-active {
     transition: opacity 0.6s;
