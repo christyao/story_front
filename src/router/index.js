@@ -9,7 +9,7 @@ import FinishStory from '../components/FinishStory.vue'; // 生成绘本组件
 const routes = [
   // ...其他路由
   {
-    path: '/CreateCharacter', // 根路径
+    path: '/', // 根路径
     name: 'CreateCharacter',
     component: CreateCharacter // 创建角色
   },
@@ -19,7 +19,7 @@ const routes = [
     component: CharacterDetails //查看角色详情
   },
   {
-    path: '/', // 根路径
+    path: '/StoryDetails', // 根路径
     name: 'StoryDetails',
     component: StoryDetails // 绘本编辑
   },

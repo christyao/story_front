@@ -33,7 +33,7 @@
   <!-- 操作区 -->
   <div class="button-container">
     <RandomButton class="randomize-button" @click="randomizeCharacter" />
-    <TButton class="create-button" theme="primary" variant="outline" type="submit" size="medium" shape="round" @click="createCharacter">创建角色</TButton>
+    <TButton class="create-button" theme="primary" variant="outline" type="submit" size="medium" shape="round" @click="navigateToFinishStory">创建角色</TButton>
   </div>
 </template>
 
@@ -59,6 +59,10 @@ export default {
         // 更多角色...
       ],
       separatorImage: require('@/assets/separator.png'), // 分隔线图片
+      album_id:1, // 创建角色后生成绘本id
+      user_id:1, // 用户id
+      theme_id:1, // 创建角色后生成绘本id中的主题id
+      protagonist_id:1, // 换一换角色后生成的角色id
     };
   },
   created() {
@@ -91,7 +95,7 @@ export default {
         .catch(error => {
           // 处理错误
           console.error(error);
-        });
+      });
     },
     createCharacter() {
       // 转到下一个页面
@@ -102,8 +106,30 @@ export default {
     },
     changeCharacter() {
       // 在这里处理更换角色的逻辑
-
-    }
+    },
+    navigateToFinishStory() {
+      // 使用Axios发送GET请求
+      axios.get('http://127.0.0.1:5000/createAlbum', {
+              params: {
+                  user_id: this.user_id,
+                  theme_id: this.theme_id,
+                  protagonist_id:this.protagonist_id,
+                }
+              }).then(response => {
+              this.$router.push({
+                name: 'StoryDetails',
+                  query: {
+                  user_id:this.user_id,
+                  album_id:this.album_id,
+                  theme_id:this.theme_id,
+                }
+              });
+        })
+        .catch(error => {
+          // 处理错误
+          console.error(error);
+      });
+    },
   }
 };
 

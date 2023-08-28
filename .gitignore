@@ -6,7 +6,10 @@ node_modules
 # local env files
 .env.local
 .env.*.local
+.env.js
 .env
+
+
 
 # Log files
 npm-debug.log*
@@ -22,3 +25,8 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+assets/ex1.png
+assets/ex2.png
+assets/ex3.png
+assets/ex4.png
